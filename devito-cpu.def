@@ -1,0 +1,88 @@
+Bootstrap: docker
+From: ubuntu:22.04
+
+%environment
+    export DEBIAN_FRONTEND=noninteractive
+    export DEVITO_ARCH="gcc"
+    export DEVITO_LANGUAGE="openmp"
+    export DEVITO_MPI=1
+    # Use container's MPI
+    export OMPI_DIR=/opt/ompi
+    export PATH="$OMPI_DIR/bin:$PATH"
+    export LD_LIBRARY_PATH="$OMPI_DIR/lib:$LD_LIBRARY_PATH"
+    export MANPATH="$OMPI_DIR/share/man:$MANPATH"
+
+%post
+    export DEBIAN_FRONTEND=noninteractive
+
+    # Install basic dependencies
+    apt-get update && apt-get install -y \
+        build-essential cmake git wget curl flex autoconf libtool \
+        python3-venv python3-dev python3-pip \
+        libnuma-dev hwloc libhwloc-dev libltdl-dev \
+        libibverbs-dev librdmacm-dev libpsm2-dev libfabric-dev libevent-dev \
+        libpmix-dev procps software-properties-common && \
+    apt-get clean && apt-get autoclean && apt-get autoremove -y && \
+    rm -rf /var/lib/apt/lists/*
+
+    echo "Installing required packages..."
+    apt-get update && apt-get install -y wget git bash gcc gfortran g++ make file
+
+    echo "Installing Open MPI"
+    export OMPI_DIR=/opt/ompi
+    export OMPI_VERSION=4.0.5
+    export OMPI_URL="https://download.open-mpi.org/release/open-mpi/v4.0/openmpi-$OMPI_VERSION.tar.bz2"
+    mkdir -p /tmp/ompi
+    mkdir -p /opt
+    # Download
+    cd /tmp/ompi && wget -O openmpi-$OMPI_VERSION.tar.bz2 $OMPI_URL && tar -xjf openmpi-$OMPI_VERSION.tar.bz2
+    # Compile and install
+    cd /tmp/ompi/openmpi-$OMPI_VERSION && ./configure --prefix=$OMPI_DIR && make -j8 install
+
+    # Set env variables so we can compile our application
+    export PATH=$OMPI_DIR/bin:$PATH
+    export LD_LIBRARY_PATH=$OMPI_DIR/lib:$LD_LIBRARY_PATH
+
+    # Create workspace
+    mkdir -p /workspace
+    cd /workspace
+
+    # Clone Devito
+    git clone https://github.com/devitocodes/devito.git
+    cd devito
+
+    # Install Devito and mpi4py (built against container MPI)
+    pip install -r requirements.txt
+    pip install -r requirements-optional.txt
+    pip install -r requirements-testing.txt
+    pip install devito
+    pip install --no-cache-dir mpi4py
+
+    cd /
+    rm -rf /workspace/devito/.git
+
+%runscript
+
+export PATH="/opt/openmpi/bin:$PATH"
+export LD_LIBRARY_PATH="/opt/openmpi/lib:$LD_LIBRARY_PATH"
+
+# Default interactive shell if no args
+if [ $# -eq 0 ]; then
+    exec /bin/bash
+else
+    # Forward arguments to Devito benchmark
+    exec python3 /workspace/devito/benchmarks/user/benchmark.py "$@"
+fi
+
+%help
+Hybrid MPI Devito container:
+- Includes OpenMPI inside container
+- Python venv with Devito and mpi4py pre-installed
+- Run MPI programs directly without binding host MPI
+
+%labels
+Author "Your Name"
+Description "Devito Hybrid MPI Container"
+Version "1.0"
+MPI_Mode "Hybrid"
+Documentation "https://apptainer.org/docs/user/1.0/mpi.html#hybrid-model"
