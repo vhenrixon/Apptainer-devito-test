@@ -5,14 +5,17 @@ From: ubuntu:22.04
     # Set Python path
     export PYTHONPATH=/usr/lib/python3/dist-packages:$PYTHONPATH
     
-
     export DEBIAN_FRONTEND=noninteractive
     # MPI environment variables for bind method
     # Adjust MPI_DIR path based on your host's MPI installation
     export PATH="$MPI_DIR/bin:$PATH"
     export LD_LIBRARY_PATH="$MPI_DIR/lib:$LD_LIBRARY_PATH"
-
+    export NVIDIA_VISIBLE_DEVICES=all
+    export NVIDIA_DRIVER_CAPABILITIES=compute,utility
     export DEVITO_MPI=1
+    export DEVITO_PLATFORM=nvidiaX
+    export DEVITO_ARCH=pgcc
+    export DEVITO_LANGUAGE=openacc
 
 %post -c /bin/bash
     export DEBIAN_FRONTEND=noninteractive
@@ -58,6 +61,7 @@ From: ubuntu:22.04
     pip install -r requirements.txt
     pip install -r requirements-optional.txt
     pip install -r requirements-testing.txt
+    pip install -r requirements-nvidia.txt
     pip install devito
     
     cd 
@@ -86,4 +90,5 @@ From: ubuntu:22.04
     - Ubuntu 22.04 base
     - Python 3.10+ with pip
     - Development tools
+    
     
