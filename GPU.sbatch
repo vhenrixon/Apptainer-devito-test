@@ -17,4 +17,4 @@ mpirun -n 4  apptainer exec --bind "$MPI_DIR" devito-test.sif \
     bash -c '
     source /opt/venv/bin/activate
     python3 /workspace/devito/benchmarks/user/benchmark.py run -P acoustic -d 20 20 20 -so 12 --tn 100
-    ' \
+    ' 
